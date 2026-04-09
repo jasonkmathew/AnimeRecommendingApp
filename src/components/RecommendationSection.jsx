@@ -1,40 +1,61 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 
-function RecommendationSection({ recommendations }) {
-  const [showRecommendations, setShowRecommendations] = useState(false);
+function RecommendationSection({ recommendations, loading, activeAnime }) {
+  const [expanded, setExpanded] = useState(true);
 
-  // Automatically show recommendations when new data is provided
-  useEffect(() => {
-    if (recommendations && recommendations.length > 0) {
-      setShowRecommendations(true);
-    }
-  }, [recommendations]);
+  const sortedRecommendations = useMemo(
+    () => [...(recommendations || [])].sort((a, b) => (b?.votes ?? 0) - (a?.votes ?? 0)),
+    [recommendations]
+  );
 
-  const handleToggleRecommendations = () => {
-    setShowRecommendations(!showRecommendations);
-  };
+  if (loading) {
+    return <p className="status-text">Building recommendation graph...</p>;
+  }
+
+  if (!activeAnime) {
+    return (
+      <section className="recommendation-section recommendation-placeholder">
+        <h2>AI Recommendations</h2>
+        <p>Pick any anime card to generate a curated list of similar titles.</p>
+      </section>
+    );
+  }
 
   return (
-    <div className="recommendation-section">
-      <h2>Recommendations</h2>
-      <button onClick={handleToggleRecommendations}>
-        {showRecommendations ? 'Hide Recommendations' : 'Show Recommendations'}
-      </button>
-      {showRecommendations && (
-        <div className="anime-list">
-          {recommendations && recommendations.length > 0 ? recommendations.map(rec => (
-            <div key={rec.entry?.mal_id || `anime-${rec.votes}`} className="anime-card">
-              <img src={rec.entry?.images?.jpg?.image_url || ''} alt={rec.entry?.title || 'Unknown Title'} />
-              <h4>{rec.entry?.title || 'Unknown Title'}</h4>
-              <p>Votes: {rec.votes || 0}</p>
-            </div>
-          )) : <p>No recommendations available.</p>}
+    <section className="recommendation-section">
+      <div className="recommendation-header">
+        <div>
+          <h2>Because you liked {activeAnime?.title}</h2>
+          <p>Community recommendation confidence powered by Jikan data.</p>
+        </div>
+        <button onClick={() => setExpanded((current) => !current)}>
+          {expanded ? 'Collapse' : 'Expand'}
+        </button>
+      </div>
+
+      {expanded && (
+        <div className="recommendation-grid">
+          {sortedRecommendations.slice(0, 12).map((rec) => (
+            <article className="recommendation-card" key={rec?.entry?.mal_id || rec?.entry?.title}>
+              <img
+                src={rec?.entry?.images?.jpg?.image_url || ''}
+                alt={rec?.entry?.title || 'Recommendation'}
+                loading="lazy"
+              />
+              <div>
+                <h3>{rec?.entry?.title || 'Unknown Title'}</h3>
+                <p>{rec?.content || 'Fans frequently pair this title with your selected anime.'}</p>
+                <span>{rec?.votes || 0} recommendation votes</span>
+              </div>
+            </article>
+          ))}
+          {sortedRecommendations.length === 0 && (
+            <p className="status-text">No recommendations available for this anime yet.</p>
+          )}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
 export default RecommendationSection;
-
-//Add RecommendationSection component to fetch and show related anime
