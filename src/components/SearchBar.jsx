@@ -3,33 +3,22 @@ import React, { useState } from 'react';
 const SearchBar = ({ onSearch }) => {
   const [query, setQuery] = useState('');
 
-  const handleInputChange = (e) => {
-    setQuery(e.target.value);
-  };
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (onSearch) {
-      onSearch(query);
-    }
+  const handleSearch = (event) => {
+    event.preventDefault();
+    onSearch(query);
   };
 
   return (
-    <form onSubmit={handleSearch} style={{ display: 'flex', alignItems: 'center' }}>
+    <form onSubmit={handleSearch} className="search-bar" role="search">
       <input
         type="text"
-        placeholder="Search..."
+        placeholder="Search anime, e.g. Fullmetal Alchemist"
         value={query}
-        onChange={handleInputChange}
-        style={{ padding: '8px', flex: 1 }}
+        onChange={(event) => setQuery(event.target.value)}
       />
-      <button type="submit" style={{ padding: '8px 16px', marginLeft: '8px' }}>
-        Search
-      </button>
+      <button type="submit">Explore</button>
     </form>
   );
 };
 
 export default SearchBar;
-
-//Add SearchBar component with controlled input and submit handler

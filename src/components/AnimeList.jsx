@@ -1,17 +1,23 @@
 import React from 'react';
 import AnimeCard from './AnimeCard';
 
-function AnimeList({ animeList = [], loading, onShowRecommendations }) {
-  if (loading) return <p>Loading...</p>;
-  if (!animeList || !animeList.length) return <p>No anime found.</p>;
+function AnimeList({ animeList = [], loading, onShowRecommendations, compact = false }) {
+  if (loading) {
+    return <p className="status-text">Loading titles...</p>;
+  }
+
+  if (!animeList?.length) {
+    return <p className="status-text">No anime found for the current filters.</p>;
+  }
 
   return (
-    <div className="anime-list">
-      {animeList.map(anime => (
+    <div className={`anime-list ${compact ? 'compact-list' : ''}`}>
+      {animeList.map((anime) => (
         <AnimeCard
           key={anime.mal_id}
           anime={anime}
           onShowRecommendations={onShowRecommendations}
+          compact={compact}
         />
       ))}
     </div>
@@ -19,5 +25,3 @@ function AnimeList({ animeList = [], loading, onShowRecommendations }) {
 }
 
 export default AnimeList;
-
-//Implement AnimeList component to render grid of AnimeCard items
