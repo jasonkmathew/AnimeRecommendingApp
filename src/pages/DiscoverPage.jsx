@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { SlidersHorizontal, Search, RefreshCw } from 'lucide-react';
@@ -36,7 +36,7 @@ export default function DiscoverPage() {
   const sortBy = searchParams.get('sort') || 'score';
   const page = parseInt(searchParams.get('page') || '1');
 
-  const fetchAnime = async () => {
+  const fetchAnime = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -60,11 +60,11 @@ export default function DiscoverPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [query, genre, type, status, sortBy, page]);
 
   useEffect(() => {
     fetchAnime();
-  }, [query, genre, type, status, sortBy, page]);
+  }, [fetchAnime]);
 
   const updateParam = (key, value) => {
     const next = new URLSearchParams(searchParams);

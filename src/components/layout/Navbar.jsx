@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Compass, Hop as Home, User, Heart, Sparkles, Search, LogOut, Menu, X } from 'lucide-react';
+import { Compass, House as Home, User, Sparkles, Search, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import AuthModal from '../ui/AuthModal';
 

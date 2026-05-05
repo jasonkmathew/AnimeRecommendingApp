@@ -129,9 +129,9 @@ const QUIZ_RESULTS = {
   ],
   romance: [
     { mal_id: 2167, title: 'Clannad: After Story', score: 8.93, image_url: 'https://cdn.myanimelist.net/images/anime/1299/110774.jpg', genres: 'Drama, Romance', compatibility: 97 },
-    { mal_id: 4181, title: 'Clannad', score: 8.04, image_url: 'https://cdn.myanimelist.net/images/anime/1299/110774.jpg', genres: 'Drama, Romance', compatibility: 94 },
-    { mal_id: 1, title: 'Your Lie in April', score: 8.65, image_url: 'https://cdn.myanimelist.net/images/anime/3/67177.jpg', genres: 'Drama, Music, Romance', compatibility: 93 },
-    { mal_id: 28671, title: 'Your Name', score: 8.83, image_url: 'https://cdn.myanimelist.net/images/anime/5/87028.jpg', genres: 'Drama, Romance', compatibility: 91 },
+    { mal_id: 4181, title: 'Clannad', score: 8.04, image_url: 'https://cdn.myanimelist.net/images/anime/11/22061.jpg', genres: 'Drama, Romance', compatibility: 94 },
+    { mal_id: 23273, title: 'Your Lie in April', score: 8.65, image_url: 'https://cdn.myanimelist.net/images/anime/3/67177.jpg', genres: 'Drama, Music, Romance', compatibility: 93 },
+    { mal_id: 32281, title: 'Your Name', score: 8.83, image_url: 'https://cdn.myanimelist.net/images/anime/5/87028.jpg', genres: 'Drama, Romance', compatibility: 91 },
     { mal_id: 31964, title: 'March Comes in Like a Lion', score: 8.68, image_url: 'https://cdn.myanimelist.net/images/anime/6/82898.jpg', genres: 'Drama, Slice of Life', compatibility: 88 },
   ],
   psychological: [
