@@ -1,8 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { SlidersHorizontal, Search } from 'lucide-react';
+import { SlidersHorizontal, Search, RefreshCw } from 'lucide-react';
 import AnimeList from '../components/anime/AnimeList';
+import { rateLimitedFetch } from '../lib/jikan';
 
 const GENRES = [
   'Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Horror',
@@ -24,6 +25,7 @@ export default function DiscoverPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [animeList, setAnimeList] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
 
   const query = searchParams.get('q') || '';
@@ -34,32 +36,33 @@ export default function DiscoverPage() {
   const sortBy = searchParams.get('sort') || 'score';
   const page = parseInt(searchParams.get('page') || '1');
 
-  useEffect(() => {
-    const fetchAnime = async () => {
-      setLoading(true);
-      try {
-        let url = 'https://api.jikan.moe/v4/anime?';
-        const params = [];
-        if (query) params.push(`q=${encodeURIComponent(query)}`);
-        if (genre) params.push(`genres=${encodeURIComponent(genre)}`);
-        if (type) params.push(`type=${type}`);
-        if (status) params.push(`status=${status === 'Airing' ? 'airing' : status === 'Complete' ? 'complete' : 'upcoming'}`);
-        params.push(`order_by=${SORT_MAP[sortBy] || 'score'}`);
-        params.push('sort=desc');
-        params.push(`limit=24`);
-        params.push(`page=${page}`);
+  const fetchAnime = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = [];
+      if (query) params.push(`q=${encodeURIComponent(query)}`);
+      if (genre) params.push(`genres=${encodeURIComponent(genre)}`);
+      if (type) params.push(`type=${type}`);
+      if (status) params.push(`status=${status === 'Airing' ? 'airing' : status === 'Complete' ? 'complete' : 'upcoming'}`);
+      params.push(`order_by=${SORT_MAP[sortBy] || 'score'}`);
+      params.push('sort=desc');
+      params.push(`limit=24`);
+      params.push(`page=${page}`);
 
-        const res = await fetch(url + params.join('&'));
-        if (!res.ok) throw new Error('Failed to fetch');
-        const data = await res.json();
-        setAnimeList(data?.data || []);
-      } catch (err) {
-        console.error(err);
-        setAnimeList([]);
-      } finally {
-        setLoading(false);
-      }
-    };
+      const url = `https://api.jikan.moe/v4/anime?${params.join('&')}`;
+      const res = await rateLimitedFetch(url);
+      setAnimeList(res || []);
+    } catch (err) {
+      console.error(err);
+      setError('Failed to load anime. The API may be rate-limited -- please try again in a moment.');
+      setAnimeList([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchAnime();
   }, [query, genre, type, status, sortBy, page]);
 
@@ -108,6 +111,15 @@ export default function DiscoverPage() {
           Filters
         </button>
       </form>
+
+      {error && (
+        <div className="error-banner">
+          <span>{error}</span>
+          <button className="btn-ghost btn-sm" onClick={fetchAnime}>
+            <RefreshCw size={14} /> Retry
+          </button>
+        </div>
+      )}
 
       {showFilters && (
         <motion.div

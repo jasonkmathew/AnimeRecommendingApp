@@ -1,10 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, TrendingUp, Calendar, Zap } from 'lucide-react';
+import { Sparkles, TrendingUp, Calendar, Zap, RefreshCw } from 'lucide-react';
 import SearchBar from '../components/anime/SearchBar';
 import AnimeList from '../components/anime/AnimeList';
 import RecommendationSection from '../components/anime/RecommendationSection';
-import { getTrending, getSeasonal, getAnimeRecommendations } from '../lib/jikan';
+import { getTrending, getSeasonal, getAnimeRecommendations, searchAnime } from '../lib/jikan';
 import { useAuth } from '../contexts/AuthContext';
 import { useActivity } from '../hooks/useActivity';
 
@@ -28,44 +28,68 @@ export default function HomePage() {
   const [loading, setLoading] = useState({ trending: false, seasonal: false, search: false, recommendations: false });
   const [error, setError] = useState(null);
 
-  const fetchData = async (url, onSuccess, onErrorKey, loadingKey) => {
+  const loadTrending = useCallback(async () => {
     try {
       setError(null);
-      setLoading((prev) => ({ ...prev, [loadingKey]: true }));
-      const response = await fetch(url);
-      if (!response.ok) throw new Error(`Request failed: ${response.status}`);
-      const data = await response.json();
-      onSuccess(data?.data ?? []);
+      setLoading(prev => ({ ...prev, trending: true }));
+      const data = await getTrending(24);
+      setTrendingAnime(data);
     } catch (err) {
       console.error(err);
-      setError(`Failed to load ${onErrorKey}. Please try again.`);
+      setError('Failed to load trending anime. The API may be rate-limited -- please try again in a moment.');
     } finally {
-      setLoading((prev) => ({ ...prev, [loadingKey]: false }));
+      setLoading(prev => ({ ...prev, trending: false }));
+    }
+  }, []);
+
+  const loadSeasonal = useCallback(async () => {
+    try {
+      setLoading(prev => ({ ...prev, seasonal: true }));
+      const data = await getSeasonal(12);
+      setSeasonalHighlights(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(prev => ({ ...prev, seasonal: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTrending();
+    loadSeasonal();
+  }, [loadTrending, loadSeasonal]);
+
+  const handleSearch = async (query) => {
+    if (!query?.trim()) { setSearchResults([]); return; }
+    try {
+      setError(null);
+      setLoading(prev => ({ ...prev, search: true }));
+      const results = await searchAnime(query, 24);
+      setSearchResults(results);
+      setRecommendations([]);
+      setActiveAnime(null);
+    } catch (err) {
+      console.error(err);
+      setError('Search failed. Please try again.');
+    } finally {
+      setLoading(prev => ({ ...prev, search: false }));
     }
   };
 
-  useEffect(() => {
-    fetchData('https://api.jikan.moe/v4/top/anime?limit=24', setTrendingAnime, 'trending anime', 'trending');
-    fetchData('https://api.jikan.moe/v4/seasons/now?limit=12', setSeasonalHighlights, 'seasonal highlights', 'seasonal');
-  }, []);
-
-  const handleSearch = (query) => {
-    if (!query?.trim()) { setSearchResults([]); return; }
-    fetchData(
-      `https://api.jikan.moe/v4/anime?q=${encodeURIComponent(query)}&order_by=members&sort=desc&limit=24`,
-      (data) => { setSearchResults(data); setRecommendations([]); setActiveAnime(null); },
-      'search results', 'search'
-    );
-  };
-
-  const handleShowRecommendations = (anime) => {
+  const handleShowRecommendations = async (anime) => {
     if (!anime?.mal_id) return;
     setActiveAnime(anime);
     if (user) logActivity(anime.mal_id, 'recommend', { title: anime.title });
-    fetchData(
-      `https://api.jikan.moe/v4/anime/${anime.mal_id}/recommendations`,
-      setRecommendations, 'recommendations', 'recommendations'
-    );
+    try {
+      setLoading(prev => ({ ...prev, recommendations: true }));
+      const data = await getAnimeRecommendations(anime.mal_id);
+      setRecommendations(data);
+    } catch (err) {
+      console.error(err);
+      setRecommendations([]);
+    } finally {
+      setLoading(prev => ({ ...prev, recommendations: false }));
+    }
   };
 
   const displayPool = searchResults.length > 0 ? searchResults : trendingAnime;
@@ -109,7 +133,14 @@ export default function HomePage() {
         <SearchBar onSearch={handleSearch} large />
       </motion.header>
 
-      {error && <div className="error-banner">{error}</div>}
+      {error && (
+        <div className="error-banner">
+          <span>{error}</span>
+          <button className="btn-ghost btn-sm" onClick={loadTrending}>
+            <RefreshCw size={14} /> Retry
+          </button>
+        </div>
+      )}
 
       <motion.section
         className="stats-grid"
@@ -158,7 +189,6 @@ export default function HomePage() {
         <AnimeList
           animeList={filteredAndSorted}
           loading={loading.search || loading.trending}
-          onShowRecommendations={handleShowRecommendations}
         />
       </section>
 
@@ -170,7 +200,6 @@ export default function HomePage() {
         <AnimeList
           animeList={seasonalHighlights}
           loading={loading.seasonal}
-          onShowRecommendations={handleShowRecommendations}
           compact
         />
       </section>

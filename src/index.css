@@ -1152,6 +1152,10 @@ button {
   border-radius: var(--radius-md);
   color: var(--error-300);
   font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
 }
 
 /* ============================================
