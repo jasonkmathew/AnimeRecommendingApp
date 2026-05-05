@@ -2241,6 +2241,209 @@ button {
 }
 
 /* ============================================
+   ADD ANIME MODAL
+   ============================================ */
+
+.modal-content-lg {
+  max-width: 640px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.add-anime-header h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: var(--sp-1);
+}
+
+.add-anime-header p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.add-anime-search {
+  margin-top: var(--sp-5);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-2) var(--sp-2) var(--sp-2) var(--sp-4);
+}
+
+.add-anime-search:focus-within {
+  border-color: var(--primary-400);
+  box-shadow: 0 0 0 3px rgba(0, 147, 255, 0.15);
+}
+
+.add-anime-search svg {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.add-anime-search input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  padding: var(--sp-2) 0;
+}
+
+.add-anime-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.add-anime-status-row {
+  margin-top: var(--sp-4);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.status-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.status-chips .chip {
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.status-chips .chip:hover {
+  background: rgba(0, 147, 255, 0.15);
+}
+
+.status-chips .chip.active {
+  background: rgba(0, 147, 255, 0.2);
+  border-color: var(--primary-400);
+  color: var(--primary-100);
+}
+
+.add-anime-results {
+  margin-top: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  overflow-y: auto;
+  flex: 1;
+  padding-right: var(--sp-2);
+}
+
+.add-anime-result {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-3);
+  transition: all var(--transition-fast);
+}
+
+.add-anime-result:hover {
+  border-color: var(--border-hover);
+}
+
+.add-anime-result img {
+  width: 48px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+}
+
+.add-anime-result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.add-anime-result-info h3 {
+  font-size: 0.92rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.add-anime-result-meta {
+  display: flex;
+  gap: var(--sp-3);
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.add-anime-result-info .chip-row {
+  margin-top: var(--sp-1);
+}
+
+.add-anime-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-md);
+  background: rgba(0, 147, 255, 0.1);
+  color: var(--primary-300);
+  border: 1px solid rgba(0, 147, 255, 0.3);
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.add-anime-btn:hover:not(:disabled) {
+  background: rgba(0, 147, 255, 0.2);
+  border-color: var(--primary-400);
+}
+
+.add-anime-btn.added {
+  background: rgba(0, 255, 160, 0.1);
+  color: var(--secondary-400);
+  border-color: rgba(0, 255, 160, 0.3);
+}
+
+.add-anime-btn:disabled {
+  cursor: default;
+}
+
+/* Watchlist header actions layout */
+.watchlist-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+/* Empty watchlist state */
+.empty-watchlist {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
+/* Spinner animation */
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* ============================================
    RESPONSIVE
    ============================================ */
 

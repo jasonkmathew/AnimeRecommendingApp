@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { User, Bookmark, Star, TrendingUp, Clock, CircleCheck as CheckCircle, Pause, Trash2, ChartBar as BarChart3, Award } from 'lucide-react';
+import { User, Bookmark, Star, Clock, CircleCheck as CheckCircle, Pause, Trash2, Award, Plus, Film } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useWatchlist } from '../hooks/useWatchlist';
 import StarRating from '../components/ui/StarRating';
+import AddAnimeModal from '../components/ui/AddAnimeModal';
 
 const STATUS_CONFIG = {
   watching: { label: 'Watching', icon: Clock, color: 'var(--accent)' },
@@ -14,10 +15,19 @@ const STATUS_CONFIG = {
   dropped: { label: 'Dropped', icon: Trash2, color: 'var(--error)' },
 };
 
+function FilmIcon({ size = 24, className }) {
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M17 3v18"/><path d="M3 7.5h4"/><path d="M17 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 16.5h4"/>
+    </svg>
+  );
+}
+
 export default function ProfilePage() {
   const { user, profile, signOut } = useAuth();
   const { watchlist, loading, updateWatchlistStatus, rateAnime, removeFromWatchlist } = useWatchlist();
   const [statusFilter, setStatusFilter] = useState('all');
+  const [addModalOpen, setAddModalOpen] = useState(false);
 
   if (!user) {
     return (
@@ -98,7 +108,7 @@ export default function ProfilePage() {
           <h3>{stats.avgRating}</h3>
         </div>
         <div className="stat-card">
-          <Film size={20} className="stat-icon" />
+          <FilmIcon size={20} className="stat-icon" />
           <p>Total Episodes</p>
           <h3>{stats.totalEps.toLocaleString()}</h3>
         </div>
@@ -134,28 +144,44 @@ export default function ProfilePage() {
       <div className="watchlist-section">
         <div className="watchlist-header">
           <h2><Bookmark size={20} /> Watchlist</h2>
-          <div className="watchlist-filters">
-            <button
-              className={`chip ${statusFilter === 'all' ? 'active' : ''}`}
-              onClick={() => setStatusFilter('all')}
-            >All ({stats.total})</button>
-            {Object.entries(STATUS_CONFIG).map(([key, { label }]) => {
-              const count = watchlist.filter(w => w.status === key).length;
-              return (
-                <button
-                  key={key}
-                  className={`chip ${statusFilter === key ? 'active' : ''}`}
-                  onClick={() => setStatusFilter(key)}
-                >{label} ({count})</button>
-              );
-            })}
+          <div className="watchlist-header-actions">
+            <button className="btn-primary btn-sm" onClick={() => setAddModalOpen(true)}>
+              <Plus size={16} /> Add Anime
+            </button>
+            <div className="watchlist-filters">
+              <button
+                className={`chip ${statusFilter === 'all' ? 'active' : ''}`}
+                onClick={() => setStatusFilter('all')}
+              >All ({stats.total})</button>
+              {Object.entries(STATUS_CONFIG).map(([key, { label }]) => {
+                const count = watchlist.filter(w => w.status === key).length;
+                return (
+                  <button
+                    key={key}
+                    className={`chip ${statusFilter === key ? 'active' : ''}`}
+                    onClick={() => setStatusFilter(key)}
+                  >{label} ({count})</button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         {loading ? (
           <p className="status-text">Loading watchlist...</p>
         ) : filteredWatchlist.length === 0 ? (
-          <p className="status-text">No entries in this category.</p>
+          <div className="empty-watchlist">
+            <p className="status-text">
+              {statusFilter === 'all'
+                ? 'Your watchlist is empty. Add anime you\'ve watched!'
+                : 'No entries in this category.'}
+            </p>
+            {statusFilter === 'all' && (
+              <button className="btn-primary" onClick={() => setAddModalOpen(true)}>
+                <Plus size={16} /> Add Your First Anime
+              </button>
+            )}
+          </div>
         ) : (
           <div className="watchlist-grid">
             {filteredWatchlist.map((entry, i) => {
@@ -214,14 +240,8 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
-    </div>
-  );
-}
 
-function Film(props) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={props.size || 24} height={props.size || 24} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={props.className}>
-      <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M17 3v18"/><path d="M3 7.5h4"/><path d="M17 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 16.5h4"/>
-    </svg>
+      <AddAnimeModal isOpen={addModalOpen} onClose={() => setAddModalOpen(false)} />
+    </div>
   );
 }
