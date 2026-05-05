@@ -1,16 +1,20 @@
-import React, { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+import React, { useEffect, useMemo, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { User, Bookmark, Star, Clock, CircleCheck as CheckCircle, Pause, Trash2, Award, Plus, Film } from 'lucide-react';
+import {
+  User, Bookmark, Star, Clock, CircleCheck as CheckCircle, Pause,
+  Trash2, Award, Plus, Film, Sparkles, TrendingUp, RefreshCw
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useWatchlist } from '../hooks/useWatchlist';
 import StarRating from '../components/ui/StarRating';
 import AddAnimeModal from '../components/ui/AddAnimeModal';
+import AnimeCard from '../components/anime/AnimeCard';
 
 const STATUS_CONFIG = {
   watching: { label: 'Watching', icon: Clock, color: 'var(--accent)' },
-  completed: { label: 'Completed', icon: CheckCircle, color: 'var(--success)' },
-  plan_to_watch: { label: 'Plan to Watch', icon: Bookmark, color: 'var(--warning)' },
+  completed: { label: 'Watched', icon: CheckCircle, color: 'var(--success)' },
+  plan_to_watch: { label: 'Want to Watch', icon: Bookmark, color: 'var(--warning)' },
   on_hold: { label: 'On Hold', icon: Pause, color: 'var(--info)' },
   dropped: { label: 'Dropped', icon: Trash2, color: 'var(--error)' },
 };
@@ -26,27 +30,20 @@ function FilmIcon({ size = 24, className }) {
 export default function ProfilePage() {
   const { user, profile, signOut } = useAuth();
   const { watchlist, loading, updateWatchlistStatus, rateAnime, removeFromWatchlist } = useWatchlist();
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [activeTab, setActiveTab] = useState('watched');
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [recommendations, setRecommendations] = useState([]);
+  const [recsLoading, setRecsLoading] = useState(false);
+  const [recsError, setRecsError] = useState(null);
 
-  if (!user) {
-    return (
-      <div className="page-profile-empty">
-        <User size={48} />
-        <h2>Sign in to view your profile</h2>
-        <p>Your watchlist, ratings, and taste profile live here.</p>
-      </div>
-    );
-  }
-
-  const filteredWatchlist = statusFilter === 'all'
-    ? watchlist
-    : watchlist.filter(w => w.status === statusFilter);
+  const watchedList = useMemo(() => watchlist.filter(w => w.status === 'completed' || w.status === 'watching'), [watchlist]);
+  const wantList = useMemo(() => watchlist.filter(w => w.status === 'plan_to_watch'), [watchlist]);
+  const displayList = activeTab === 'watched' ? watchedList : wantList;
 
   const stats = useMemo(() => {
     const total = watchlist.length;
-    const watching = watchlist.filter(w => w.status === 'watching').length;
     const completed = watchlist.filter(w => w.status === 'completed').length;
+    const watching = watchlist.filter(w => w.status === 'watching').length;
     const rated = watchlist.filter(w => w.user_rating);
     const avgRating = rated.length
       ? (rated.reduce((acc, w) => acc + w.user_rating, 0) / rated.length).toFixed(1)
@@ -63,11 +60,56 @@ export default function ProfilePage() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5);
 
-    return { total, watching, completed, avgRating, totalEps, topGenres, rated: rated.length };
+    return { total, completed, watching, avgRating, totalEps, topGenres, rated: rated.length };
   }, [watchlist]);
+
+  // Fetch recommendations from edge function based on watchlist
+  const fetchRecommendations = async () => {
+    if (!user || watchlist.length === 0) return;
+    setRecsLoading(true);
+    setRecsError(null);
+    try {
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+      const res = await fetch(
+        `${supabaseUrl}/functions/v1/recommend/for-you?user_id=${user.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${anonKey}`,
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      if (!res.ok) throw new Error('Recommendation fetch failed');
+      const data = await res.json();
+      setRecommendations(data.recommendations || []);
+    } catch (err) {
+      console.error(err);
+      setRecsError('Could not load recommendations. Try again in a moment.');
+    } finally {
+      setRecsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && watchlist.length > 0) {
+      fetchRecommendations();
+    }
+  }, [user, watchlist.length]);
+
+  if (!user) {
+    return (
+      <div className="page-profile-empty">
+        <User size={48} />
+        <h2>Sign in to view your profile</h2>
+        <p>Your watchlist, ratings, and taste profile live here.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page-profile">
+      {/* Profile Header */}
       <motion.div
         className="profile-header"
         initial={{ opacity: 0, y: 20 }}
@@ -86,6 +128,7 @@ export default function ProfilePage() {
         <button className="btn-ghost" onClick={signOut}>Sign Out</button>
       </motion.div>
 
+      {/* Stats */}
       <motion.div
         className="profile-stats"
         initial={{ opacity: 0, y: 20 }}
@@ -99,7 +142,7 @@ export default function ProfilePage() {
         </div>
         <div className="stat-card">
           <CheckCircle size={20} className="stat-icon" />
-          <p>Completed</p>
+          <p>Watched</p>
           <h3>{stats.completed}</h3>
         </div>
         <div className="stat-card">
@@ -114,6 +157,7 @@ export default function ProfilePage() {
         </div>
       </motion.div>
 
+      {/* Taste Profile */}
       {stats.topGenres.length > 0 && (
         <motion.div
           className="taste-profile"
@@ -141,105 +185,170 @@ export default function ProfilePage() {
         </motion.div>
       )}
 
+      {/* Watchlist Tabs */}
       <div className="watchlist-section">
-        <div className="watchlist-header">
-          <h2><Bookmark size={20} /> Watchlist</h2>
-          <div className="watchlist-header-actions">
-            <button className="btn-primary btn-sm" onClick={() => setAddModalOpen(true)}>
-              <Plus size={16} /> Add Anime
+        <div className="watchlist-tabs-header">
+          <div className="watchlist-tabs">
+            <button
+              className={`watchlist-tab ${activeTab === 'watched' ? 'active' : ''}`}
+              onClick={() => setActiveTab('watched')}
+            >
+              <CheckCircle size={16} />
+              Watched
+              <span className="tab-count">{watchedList.length}</span>
             </button>
-            <div className="watchlist-filters">
-              <button
-                className={`chip ${statusFilter === 'all' ? 'active' : ''}`}
-                onClick={() => setStatusFilter('all')}
-              >All ({stats.total})</button>
-              {Object.entries(STATUS_CONFIG).map(([key, { label }]) => {
-                const count = watchlist.filter(w => w.status === key).length;
-                return (
-                  <button
-                    key={key}
-                    className={`chip ${statusFilter === key ? 'active' : ''}`}
-                    onClick={() => setStatusFilter(key)}
-                  >{label} ({count})</button>
-                );
-              })}
-            </div>
+            <button
+              className={`watchlist-tab ${activeTab === 'want' ? 'active' : ''}`}
+              onClick={() => setActiveTab('want')}
+            >
+              <Bookmark size={16} />
+              Want to Watch
+              <span className="tab-count">{wantList.length}</span>
+            </button>
           </div>
+          <button className="btn-primary btn-sm" onClick={() => setAddModalOpen(true)}>
+            <Plus size={16} /> Add Anime
+          </button>
         </div>
 
-        {loading ? (
-          <p className="status-text">Loading watchlist...</p>
-        ) : filteredWatchlist.length === 0 ? (
-          <div className="empty-watchlist">
-            <p className="status-text">
-              {statusFilter === 'all'
-                ? 'Your watchlist is empty. Add anime you\'ve watched!'
-                : 'No entries in this category.'}
-            </p>
-            {statusFilter === 'all' && (
-              <button className="btn-primary" onClick={() => setAddModalOpen(true)}>
-                <Plus size={16} /> Add Your First Anime
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="watchlist-grid">
-            {filteredWatchlist.map((entry, i) => {
-              const statusCfg = STATUS_CONFIG[entry.status] || STATUS_CONFIG.plan_to_watch;
-              return (
-                <motion.div
-                  key={entry.id}
-                  className="watchlist-card"
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: i * 0.03 }}
-                >
-                  <Link to={`/anime/${entry.mal_id}`} className="watchlist-card-link">
-                    <img src={entry.image_url} alt={entry.title} loading="lazy" />
-                    <div>
-                      <h3>{entry.title}</h3>
-                      <div className="watchlist-card-meta">
-                        <span style={{ color: statusCfg.color }}>{statusCfg.label}</span>
-                        {entry.episodes && <span>{entry.episodes} eps</span>}
-                        {entry.score > 0 && <span>MAL: {entry.score}</span>}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+          >
+            {loading ? (
+              <p className="status-text">Loading...</p>
+            ) : displayList.length === 0 ? (
+              <div className="empty-watchlist">
+                <p className="status-text">
+                  {activeTab === 'watched'
+                    ? "You haven't marked any anime as watched yet."
+                    : "No anime in your want-to-watch list."}
+                </p>
+                <button className="btn-primary" onClick={() => setAddModalOpen(true)}>
+                  <Plus size={16} /> {activeTab === 'watched' ? 'Add Anime You\'ve Watched' : 'Add Anime to Watch'}
+                </button>
+              </div>
+            ) : (
+              <div className="watchlist-grid">
+                {displayList.map((entry, i) => {
+                  const statusCfg = STATUS_CONFIG[entry.status] || STATUS_CONFIG.plan_to_watch;
+                  return (
+                    <motion.div
+                      key={entry.id}
+                      className="watchlist-card"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.03 }}
+                    >
+                      <Link to={`/anime/${entry.mal_id}`} className="watchlist-card-link">
+                        <img src={entry.image_url} alt={entry.title} loading="lazy" />
+                        <div>
+                          <h3>{entry.title}</h3>
+                          <div className="watchlist-card-meta">
+                            <span style={{ color: statusCfg.color }}>{statusCfg.label}</span>
+                            {entry.episodes && <span>{entry.episodes} eps</span>}
+                            {entry.score > 0 && <span>MAL: {entry.score}</span>}
+                          </div>
+                          {entry.user_rating && (
+                            <div className="watchlist-rating">
+                              <Star size={14} fill="var(--accent)" stroke="var(--accent)" />
+                              <span>{entry.user_rating}/10</span>
+                            </div>
+                          )}
+                        </div>
+                      </Link>
+                      <div className="watchlist-card-actions">
+                        <select
+                          value={entry.status}
+                          onChange={(e) => updateWatchlistStatus(entry.mal_id, e.target.value)}
+                          className="status-select-sm"
+                        >
+                          {Object.entries(STATUS_CONFIG).map(([key, { label }]) => (
+                            <option key={key} value={key}>{label}</option>
+                          ))}
+                        </select>
+                        <StarRating
+                          rating={entry.user_rating || 0}
+                          onRate={(rating) => rateAnime(entry.mal_id, rating)}
+                          size={14}
+                        />
+                        <button
+                          className="btn-icon-danger"
+                          onClick={() => removeFromWatchlist(entry.mal_id)}
+                          aria-label="Remove from watchlist"
+                        >
+                          <Trash2 size={14} />
+                        </button>
                       </div>
-                      {entry.user_rating && (
-                        <div className="watchlist-rating">
-                          <Star size={14} fill="var(--accent)" stroke="var(--accent)" />
-                          <span>{entry.user_rating}/10</span>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Recommendations Based on Your List */}
+      {watchlist.length > 0 && (
+        <div className="profile-recs-section">
+          <div className="section-heading">
+            <h2><Sparkles size={20} /> Recommended For You</h2>
+            <p>Based on your watchlist and taste profile</p>
+          </div>
+
+          {recsError && (
+            <div className="error-banner">
+              <span>{recsError}</span>
+              <button className="btn-ghost btn-sm" onClick={fetchRecommendations}>
+                <RefreshCw size={14} /> Retry
+              </button>
+            </div>
+          )}
+
+          {recsLoading ? (
+            <p className="status-text">Finding your next obsession...</p>
+          ) : recommendations.length > 0 ? (
+            <div className="profile-recs-grid">
+              {recommendations.map((rec, i) => (
+                <motion.div
+                  key={rec.mal_id}
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.06 }}
+                >
+                  <Link to={`/anime/${rec.mal_id}`} className="profile-rec-card">
+                    <img src={rec.image_url} alt={rec.title} loading="lazy" />
+                    <div className="profile-rec-info">
+                      <h3>{rec.title}</h3>
+                      {rec.score && (
+                        <div className="profile-rec-score">
+                          <Star size={12} fill="var(--accent)" stroke="var(--accent)" />
+                          <span>{rec.score}</span>
                         </div>
                       )}
+                      {rec.genres?.length > 0 && (
+                        <div className="chip-row">
+                          {rec.genres.slice(0, 3).map(g => (
+                            <span key={g} className="chip">{g}</span>
+                          ))}
+                        </div>
+                      )}
+                      {rec.reason && <p className="profile-rec-reason">{rec.reason}</p>}
                     </div>
                   </Link>
-                  <div className="watchlist-card-actions">
-                    <select
-                      value={entry.status}
-                      onChange={(e) => updateWatchlistStatus(entry.mal_id, e.target.value)}
-                      className="status-select-sm"
-                    >
-                      {Object.entries(STATUS_CONFIG).map(([key, { label }]) => (
-                        <option key={key} value={key}>{label}</option>
-                      ))}
-                    </select>
-                    <StarRating
-                      rating={entry.user_rating || 0}
-                      onRate={(rating) => rateAnime(entry.mal_id, rating)}
-                      size={14}
-                    />
-                    <button
-                      className="btn-icon-danger"
-                      onClick={() => removeFromWatchlist(entry.mal_id)}
-                      aria-label="Remove from watchlist"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
                 </motion.div>
-              );
-            })}
-          </div>
-        )}
-      </div>
+              ))}
+            </div>
+          ) : (
+            !recsError && <p className="status-text">Add more anime to your list to unlock personalized recommendations.</p>
+          )}
+        </div>
+      )}
 
       <AddAnimeModal isOpen={addModalOpen} onClose={() => setAddModalOpen(false)} />
     </div>
