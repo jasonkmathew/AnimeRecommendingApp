@@ -187,6 +187,7 @@ export default function ProfilePage() {
 
       {/* Watchlist Tabs */}
       <div className="watchlist-section">
+        <h2 className="watchlist-title"><Bookmark size={22} /> My Anime List</h2>
         <div className="watchlist-tabs-header">
           <div className="watchlist-tabs">
             <button
