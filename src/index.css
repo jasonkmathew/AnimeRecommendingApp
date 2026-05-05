@@ -2715,17 +2715,12 @@ button {
     flex-direction: column;
   }
 
-  .soul-match-card {
-    flex-direction: column;
-    text-align: center;
-  }
-
-  .soul-match-link {
-    flex-direction: column;
+  .soul-match-layout {
+    grid-template-columns: 80px 1fr;
   }
 
   .compatibility-ring {
-    margin: 0 auto;
+    display: none;
   }
 }
 
@@ -2745,6 +2740,265 @@ button {
   .quiz-option {
     padding: var(--sp-3);
   }
+}
+
+/* ============================================
+   TOAST NOTIFICATIONS
+   ============================================ */
+
+.toast-container {
+  position: fixed;
+  bottom: var(--sp-6);
+  right: var(--sp-6);
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  pointer-events: none;
+}
+
+.toast {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5);
+  border-radius: var(--radius-lg);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  pointer-events: all;
+  max-width: 360px;
+  backdrop-filter: blur(16px);
+}
+
+.toast-success { border-color: rgba(0, 255, 160, 0.4); }
+.toast-success .toast-icon { color: var(--secondary-400); }
+
+.toast-error { border-color: rgba(255, 0, 51, 0.4); }
+.toast-error .toast-icon { color: var(--error-300); }
+
+.toast-info .toast-icon { color: var(--primary-300); }
+
+.toast-close {
+  margin-left: auto;
+  background: none;
+  color: var(--text-muted);
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+  transition: color var(--transition-fast);
+}
+
+.toast-close:hover { color: var(--text-primary); }
+
+/* ============================================
+   QUIZ LOADING
+   ============================================ */
+
+.quiz-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  min-height: 60vh;
+  text-align: center;
+  color: var(--primary-300);
+}
+
+.quiz-loading h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.quiz-loading p {
+  color: var(--text-muted);
+}
+
+.quiz-back-btn {
+  margin-top: var(--sp-5);
+}
+
+/* ============================================
+   SOUL MATCH CARD — UPDATED LAYOUT
+   ============================================ */
+
+.soul-match-card {
+  background: var(--bg-glass);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: var(--sp-4);
+  position: relative;
+  transition: all var(--transition-base);
+  overflow: visible;
+}
+
+.soul-match-card:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+.soul-match-card.top-match {
+  border-color: rgba(0, 255, 160, 0.35);
+  background: rgba(0, 255, 160, 0.04);
+}
+
+.soul-match-layout {
+  display: grid;
+  grid-template-columns: 100px 1fr auto;
+  gap: var(--sp-4);
+  align-items: start;
+}
+
+.soul-match-poster-link {
+  display: block;
+}
+
+.soul-match-poster {
+  width: 100px;
+  height: 140px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
+.soul-match-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+
+.soul-match-title-link {
+  color: inherit;
+}
+
+.soul-match-title-link h3 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.soul-match-title-link:hover h3 {
+  color: var(--primary-200);
+}
+
+.soul-match-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.soul-match-score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  color: var(--accent-300);
+  font-size: 0.9rem;
+}
+
+.soul-match-synopsis {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.soul-match-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin-top: var(--sp-1);
+}
+
+.btn-active-green {
+  color: var(--secondary-400) !important;
+  border-color: rgba(0, 255, 160, 0.4) !important;
+  background: rgba(0, 255, 160, 0.08) !important;
+}
+
+/* ============================================
+   TRAILER MODAL
+   ============================================ */
+
+.trailer-overlay {
+  background: rgba(0, 0, 0, 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+.trailer-modal {
+  position: relative;
+  width: 90vw;
+  max-width: 900px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-2xl);
+  overflow: hidden;
+}
+
+.trailer-close {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  z-index: 10;
+  background: rgba(0, 0, 0, 0.7);
+  color: var(--text-primary);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-full);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast);
+}
+
+.trailer-close:hover {
+  background: rgba(0, 0, 0, 0.9);
+}
+
+.trailer-embed {
+  position: relative;
+  padding-bottom: 56.25%; /* 16:9 */
+  height: 0;
+}
+
+.trailer-embed iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ============================================
+   DISCOVER PAGE ADDITIONS
+   ============================================ */
+
+.discover-total {
+  color: var(--text-muted);
+  font-size: 0.88rem;
+}
+
+.discover-loading-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.pagination button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pagination-info {
+  font-size: 0.9rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  min-width: 60px;
+  text-align: center;
 }
 
 /* ============================================

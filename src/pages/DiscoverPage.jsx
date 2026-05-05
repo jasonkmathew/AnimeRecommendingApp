@@ -1,14 +1,15 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { SlidersHorizontal, Search, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { SlidersHorizontal, Search, RefreshCw, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import AnimeList from '../components/anime/AnimeList';
-import { rateLimitedFetch } from '../lib/jikan';
+import { rateLimitedFetchPaginated, GENRE_IDS } from '../lib/jikan';
+import { useDebounce } from '../hooks/useDebounce';
 
 const GENRES = [
   'Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Horror',
   'Mystery', 'Romance', 'Sci-Fi', 'Slice of Life', 'Sports', 'Supernatural',
-  'Thriller', 'Mecha', 'Music', 'Psychological',
+  'Thriller', 'Mecha', 'Music', 'Psychological', 'Historical',
 ];
 
 const TYPES = ['TV', 'Movie', 'OVA', 'Special', 'ONA'];
@@ -27,35 +28,66 @@ export default function DiscoverPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [totalResults, setTotalResults] = useState(null);
+  const topRef = useRef(null);
 
   const query = searchParams.get('q') || '';
   const [inputQuery, setInputQuery] = useState(query);
+  const debouncedQuery = useDebounce(inputQuery, 500);
+
   const genre = searchParams.get('genre') || '';
   const type = searchParams.get('type') || '';
   const status = searchParams.get('status') || '';
   const sortBy = searchParams.get('sort') || 'score';
   const page = parseInt(searchParams.get('page') || '1');
 
+  // Sync debounced query to URL params
+  useEffect(() => {
+    if (debouncedQuery !== query) {
+      const next = new URLSearchParams(searchParams);
+      if (debouncedQuery) {
+        next.set('q', debouncedQuery);
+      } else {
+        next.delete('q');
+      }
+      next.set('page', '1');
+      setSearchParams(next);
+    }
+  }, [debouncedQuery]);
+
   const fetchAnime = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const params = [];
-      if (query) params.push(`q=${encodeURIComponent(query)}`);
-      if (genre) params.push(`genres=${encodeURIComponent(genre)}`);
-      if (type) params.push(`type=${type}`);
-      if (status) params.push(`status=${status === 'Airing' ? 'airing' : status === 'Complete' ? 'complete' : 'upcoming'}`);
-      params.push(`order_by=${SORT_MAP[sortBy] || 'score'}`);
-      params.push('sort=desc');
-      params.push(`limit=24`);
-      params.push(`page=${page}`);
+      const params = new URLSearchParams();
+      if (query) params.set('q', query);
 
-      const url = `https://api.jikan.moe/v4/anime?${params.join('&')}`;
-      const res = await rateLimitedFetch(url);
-      setAnimeList(res || []);
+      // Convert genre name → ID for Jikan API
+      if (genre && GENRE_IDS[genre]) {
+        params.set('genres', GENRE_IDS[genre]);
+      }
+
+      if (type) params.set('type', type);
+      if (status) {
+        const statusMap = { Airing: 'airing', Complete: 'complete', Upcoming: 'upcoming' };
+        params.set('status', statusMap[status] || status.toLowerCase());
+      }
+
+      params.set('order_by', SORT_MAP[sortBy] || 'score');
+      params.set('sort', 'desc');
+      params.set('limit', '25');
+      params.set('page', page);
+      params.set('sfw', 'true');
+
+      const url = `https://api.jikan.moe/v4/anime?${params}`;
+      const { data, pagination } = await rateLimitedFetchPaginated(url);
+      setAnimeList(data || []);
+      setHasNextPage(pagination?.has_next_page ?? false);
+      setTotalResults(pagination?.items?.total ?? null);
     } catch (err) {
       console.error(err);
-      setError('Failed to load anime. The API may be rate-limited -- please try again in a moment.');
+      setError('Failed to load anime. The API may be rate-limited — please try again in a moment.');
       setAnimeList([]);
     } finally {
       setLoading(false);
@@ -77,31 +109,36 @@ export default function DiscoverPage() {
     setSearchParams(next);
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    updateParam('q', inputQuery);
+  const goToPage = (newPage) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('page', String(newPage));
+    setSearchParams(next);
+    topRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
   return (
-    <div className="page-discover">
+    <div className="page-discover" ref={topRef}>
       <motion.div
         className="discover-header"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <h1>Discover Anime</h1>
-        <p>Explore the full catalog with advanced filters</p>
+        <p>
+          Search the full MyAnimeList database
+          {totalResults != null && <span className="discover-total"> — {totalResults.toLocaleString()} titles found</span>}
+        </p>
       </motion.div>
 
-      <form className="discover-search" onSubmit={handleSearch}>
+      <form className="discover-search" onSubmit={(e) => e.preventDefault()}>
         <Search size={18} />
         <input
           type="text"
-          placeholder="Search by title..."
+          placeholder="Search any title, e.g. Fullmetal Alchemist..."
           value={inputQuery}
           onChange={(e) => setInputQuery(e.target.value)}
         />
-        <button type="submit" className="btn-primary">Search</button>
+        {loading && <Loader2 size={18} className="spin discover-loading-icon" />}
         <button
           type="button"
           className={`btn-ghost ${showFilters ? 'active' : ''}`}
@@ -112,6 +149,73 @@ export default function DiscoverPage() {
         </button>
       </form>
 
+      <AnimatePresence>
+        {showFilters && (
+          <motion.div
+            className="filter-panel"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <div className="filter-group">
+              <label>Genre</label>
+              <div className="filter-chips">
+                <button className={`chip ${!genre ? 'active' : ''}`} onClick={() => updateParam('genre', '')}>All</button>
+                {GENRES.map(g => (
+                  <button
+                    key={g}
+                    className={`chip ${genre === g ? 'active' : ''}`}
+                    onClick={() => updateParam('genre', g)}
+                  >{g}</button>
+                ))}
+              </div>
+            </div>
+            <div className="filter-group">
+              <label>Type</label>
+              <div className="filter-chips">
+                <button className={`chip ${!type ? 'active' : ''}`} onClick={() => updateParam('type', '')}>All</button>
+                {TYPES.map(t => (
+                  <button key={t} className={`chip ${type === t ? 'active' : ''}`} onClick={() => updateParam('type', t)}>{t}</button>
+                ))}
+              </div>
+            </div>
+            <div className="filter-group">
+              <label>Status</label>
+              <div className="filter-chips">
+                <button className={`chip ${!status ? 'active' : ''}`} onClick={() => updateParam('status', '')}>All</button>
+                {STATUSES.map(s => (
+                  <button key={s} className={`chip ${status === s ? 'active' : ''}`} onClick={() => updateParam('status', s)}>{s}</button>
+                ))}
+              </div>
+            </div>
+            <div className="filter-group">
+              <label>Sort By</label>
+              <select value={sortBy} onChange={(e) => updateParam('sort', e.target.value)}>
+                <option value="score">Score</option>
+                <option value="popularity">Popularity</option>
+                <option value="favorites">Favorites</option>
+                <option value="title">Title A–Z</option>
+              </select>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {(query || genre || type || status) && (
+        <div className="discover-results-info">
+          {query && <span>Results for "{query}"</span>}
+          {genre && <span className="chip active">{genre}</span>}
+          {type && <span className="chip active">{type}</span>}
+          {status && <span className="chip active">{status}</span>}
+          <button
+            className="btn-ghost btn-sm"
+            onClick={() => { setInputQuery(''); setSearchParams(new URLSearchParams()); }}
+          >
+            Clear all
+          </button>
+        </div>
+      )}
+
       {error && (
         <div className="error-banner">
           <span>{error}</span>
@@ -121,80 +225,28 @@ export default function DiscoverPage() {
         </div>
       )}
 
-      {showFilters && (
-        <motion.div
-          className="filter-panel"
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-        >
-          <div className="filter-group">
-            <label>Genre</label>
-            <div className="filter-chips">
-              <button
-                className={`chip ${!genre ? 'active' : ''}`}
-                onClick={() => updateParam('genre', '')}
-              >All</button>
-              {GENRES.map(g => (
-                <button
-                  key={g}
-                  className={`chip ${genre === g ? 'active' : ''}`}
-                  onClick={() => updateParam('genre', g)}
-                >{g}</button>
-              ))}
-            </div>
-          </div>
-          <div className="filter-group">
-            <label>Type</label>
-            <div className="filter-chips">
-              <button className={`chip ${!type ? 'active' : ''}`} onClick={() => updateParam('type', '')}>All</button>
-              {TYPES.map(t => (
-                <button key={t} className={`chip ${type === t ? 'active' : ''}`} onClick={() => updateParam('type', t)}>{t}</button>
-              ))}
-            </div>
-          </div>
-          <div className="filter-group">
-            <label>Status</label>
-            <div className="filter-chips">
-              <button className={`chip ${!status ? 'active' : ''}`} onClick={() => updateParam('status', '')}>All</button>
-              {STATUSES.map(s => (
-                <button key={s} className={`chip ${status === s ? 'active' : ''}`} onClick={() => updateParam('status', s)}>{s}</button>
-              ))}
-            </div>
-          </div>
-          <div className="filter-group">
-            <label>Sort By</label>
-            <select value={sortBy} onChange={(e) => updateParam('sort', e.target.value)}>
-              <option value="score">Score</option>
-              <option value="popularity">Popularity</option>
-              <option value="favorites">Favorites</option>
-              <option value="title">Title</option>
-            </select>
-          </div>
-        </motion.div>
-      )}
-
-      <div className="discover-results-info">
-        {query && <span>Results for "{query}"</span>}
-        {genre && <span className="chip active">{genre}</span>}
-        {type && <span className="chip active">{type}</span>}
-      </div>
-
       <AnimeList animeList={animeList} loading={loading} />
 
-      <div className="pagination">
-        {page > 1 && (
-          <button className="btn-ghost" onClick={() => updateParam('page', String(page - 1))}>
-            Previous
+      {/* Pagination */}
+      {!loading && (animeList.length > 0 || page > 1) && (
+        <div className="pagination">
+          <button
+            className="btn-ghost"
+            onClick={() => goToPage(page - 1)}
+            disabled={page <= 1}
+          >
+            <ChevronLeft size={16} /> Previous
           </button>
-        )}
-        <span>Page {page}</span>
-        {animeList.length === 24 && (
-          <button className="btn-ghost" onClick={() => updateParam('page', String(page + 1))}>
-            Next
+          <span className="pagination-info">Page {page}</span>
+          <button
+            className="btn-ghost"
+            onClick={() => goToPage(page + 1)}
+            disabled={!hasNextPage}
+          >
+            Next <ChevronRight size={16} />
           </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

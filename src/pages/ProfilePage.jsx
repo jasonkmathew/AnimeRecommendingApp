@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useWatchlist } from '../hooks/useWatchlist';
+import { useToast } from '../contexts/ToastContext';
 import StarRating from '../components/ui/StarRating';
 import AddAnimeModal from '../components/ui/AddAnimeModal';
 
@@ -21,6 +22,7 @@ const STATUS_CONFIG = {
 export default function ProfilePage() {
   const { user, profile, signOut } = useAuth();
   const { watchlist, loading, updateWatchlistStatus, rateAnime, removeFromWatchlist } = useWatchlist();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('watched');
   const [addModalOpen, setAddModalOpen] = useState(false);
   const [recommendations, setRecommendations] = useState([]);

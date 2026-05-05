@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Star, Bookmark, Play, Calendar, Clock, Users, Film,
-  ExternalLink, ChevronRight, Heart, Tv
+  Star, Bookmark, Play, Clock, Film,
+  ExternalLink, ChevronRight, Tv, X as XIcon,
 } from 'lucide-react';
 import { getAnimeDetail, getAnimeRecommendations, getAnimeCharacters } from '../lib/jikan';
 import { useAuth } from '../contexts/AuthContext';
 import { useWatchlist } from '../hooks/useWatchlist';
 import { useActivity } from '../hooks/useActivity';
+import { useToast } from '../contexts/ToastContext';
 import StarRating from '../components/ui/StarRating';
 import AnimeList from '../components/anime/AnimeList';
 import { DetailSkeleton } from '../components/ui/Skeleton';
@@ -18,11 +19,13 @@ export default function AnimeDetailPage() {
   const { user } = useAuth();
   const { isInWatchlist, addToWatchlist, removeFromWatchlist, getWatchlistEntry, rateAnime, updateWatchlistStatus } = useWatchlist();
   const { logActivity } = useActivity();
+  const toast = useToast();
   const [anime, setAnime] = useState(null);
   const [characters, setCharacters] = useState([]);
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
+  const [trailerOpen, setTrailerOpen] = useState(false);
 
   const inList = isInWatchlist(parseInt(id));
   const watchlistEntry = getWatchlistEntry(parseInt(id));
@@ -56,11 +59,13 @@ export default function AnimeDetailPage() {
   const trailerUrl = anime.trailer?.url;
   const recAnime = recommendations.map(r => r.entry).filter(Boolean);
 
-  const handleWatchlistToggle = () => {
+  const handleWatchlistToggle = async () => {
     if (inList) {
-      removeFromWatchlist(parseInt(id));
+      await removeFromWatchlist(parseInt(id));
+      toast(`"${anime.title}" removed from watchlist`, 'info');
     } else {
-      addToWatchlist(anime, 'plan_to_watch');
+      await addToWatchlist(anime, 'plan_to_watch');
+      toast(`"${anime.title}" added to watchlist`, 'success');
     }
   };
 
@@ -68,6 +73,7 @@ export default function AnimeDetailPage() {
     if (!user) return;
     if (!inList) await addToWatchlist(anime, 'completed');
     await rateAnime(parseInt(id), rating);
+    toast(`Rated ${rating}/10`, 'success');
   };
 
   const tabs = [
@@ -163,9 +169,9 @@ export default function AnimeDetailPage() {
                 </>
               )}
               {trailerUrl && (
-                <a href={trailerUrl} target="_blank" rel="noopener noreferrer" className="btn-ghost">
+                <button className="btn-ghost" onClick={() => setTrailerOpen(true)}>
                   <Play size={18} /> Watch Trailer
-                </a>
+                </button>
               )}
               {anime.url && (
                 <a href={anime.url} target="_blank" rel="noopener noreferrer" className="btn-ghost">
@@ -302,6 +308,40 @@ export default function AnimeDetailPage() {
           </motion.div>
         )}
       </div>
+
+      {/* Trailer modal */}
+      <AnimatePresence>
+        {trailerOpen && trailerUrl && (
+          <motion.div
+            className="modal-overlay trailer-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setTrailerOpen(false)}
+          >
+            <motion.div
+              className="trailer-modal"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 280 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button className="trailer-close" onClick={() => setTrailerOpen(false)} aria-label="Close trailer">
+                <XIcon size={20} />
+              </button>
+              <div className="trailer-embed">
+                <iframe
+                  src={trailerUrl.replace('watch?v=', 'embed/').replace('youtu.be/', 'www.youtube.com/embed/')}
+                  title={`${anime.title} trailer`}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
