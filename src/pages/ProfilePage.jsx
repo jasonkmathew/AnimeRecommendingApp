@@ -3,13 +3,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   User, Bookmark, Star, Clock, CircleCheck as CheckCircle, Pause,
-  Trash2, Award, Plus, Film, Sparkles, TrendingUp, RefreshCw
+  Trash2, Award, Plus, Sparkles, RefreshCw, ListVideo, Clapperboard
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useWatchlist } from '../hooks/useWatchlist';
 import StarRating from '../components/ui/StarRating';
 import AddAnimeModal from '../components/ui/AddAnimeModal';
-import AnimeCard from '../components/anime/AnimeCard';
 
 const STATUS_CONFIG = {
   watching: { label: 'Watching', icon: Clock, color: 'var(--accent)' },
@@ -18,14 +17,6 @@ const STATUS_CONFIG = {
   on_hold: { label: 'On Hold', icon: Pause, color: 'var(--info)' },
   dropped: { label: 'Dropped', icon: Trash2, color: 'var(--error)' },
 };
-
-function FilmIcon({ size = 24, className }) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M17 3v18"/><path d="M3 7.5h4"/><path d="M17 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 16.5h4"/>
-    </svg>
-  );
-}
 
 export default function ProfilePage() {
   const { user, profile, signOut } = useAuth();
@@ -63,7 +54,6 @@ export default function ProfilePage() {
     return { total, completed, watching, avgRating, totalEps, topGenres, rated: rated.length };
   }, [watchlist]);
 
-  // Fetch recommendations from edge function based on watchlist
   const fetchRecommendations = async () => {
     if (!user || watchlist.length === 0) return;
     setRecsLoading(true);
@@ -151,7 +141,7 @@ export default function ProfilePage() {
           <h3>{stats.avgRating}</h3>
         </div>
         <div className="stat-card">
-          <FilmIcon size={20} className="stat-icon" />
+          <Clapperboard size={20} className="stat-icon" />
           <p>Total Episodes</p>
           <h3>{stats.totalEps.toLocaleString()}</h3>
         </div>
@@ -185,36 +175,42 @@ export default function ProfilePage() {
         </motion.div>
       )}
 
-      {/* Watchlist Tabs */}
+      {/* My Anime List - Tabs Section */}
       <div className="watchlist-section">
-        <h2 className="watchlist-title"><Bookmark size={22} /> My Anime List</h2>
-        <div className="watchlist-tabs-header">
-          <div className="watchlist-tabs">
-            <button
-              className={`watchlist-tab ${activeTab === 'watched' ? 'active' : ''}`}
-              onClick={() => setActiveTab('watched')}
-            >
-              <CheckCircle size={16} />
-              Watched
-              <span className="tab-count">{watchedList.length}</span>
-            </button>
-            <button
-              className={`watchlist-tab ${activeTab === 'want' ? 'active' : ''}`}
-              onClick={() => setActiveTab('want')}
-            >
-              <Bookmark size={16} />
-              Want to Watch
-              <span className="tab-count">{wantList.length}</span>
-            </button>
-          </div>
-          <button className="btn-primary btn-sm" onClick={() => setAddModalOpen(true)}>
-            <Plus size={16} /> Add Anime
+        <div className="watchlist-section-top">
+          <h2 className="watchlist-title"><ListVideo size={24} /> My Anime List</h2>
+          <button className="btn-primary" onClick={() => setAddModalOpen(true)}>
+            <Plus size={18} /> Add Anime
+          </button>
+        </div>
+
+        <div className="watchlist-tabs" role="tablist">
+          <button
+            role="tab"
+            aria-selected={activeTab === 'watched'}
+            className={`watchlist-tab ${activeTab === 'watched' ? 'active' : ''}`}
+            onClick={() => setActiveTab('watched')}
+          >
+            <CheckCircle size={18} />
+            <span className="watchlist-tab-label">Watched</span>
+            <span className="tab-count">{watchedList.length}</span>
+          </button>
+          <button
+            role="tab"
+            aria-selected={activeTab === 'want'}
+            className={`watchlist-tab ${activeTab === 'want' ? 'active' : ''}`}
+            onClick={() => setActiveTab('want')}
+          >
+            <Bookmark size={18} />
+            <span className="watchlist-tab-label">Want to Watch</span>
+            <span className="tab-count">{wantList.length}</span>
           </button>
         </div>
 
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
+            className="watchlist-tab-content"
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
@@ -224,13 +220,16 @@ export default function ProfilePage() {
               <p className="status-text">Loading...</p>
             ) : displayList.length === 0 ? (
               <div className="empty-watchlist">
-                <p className="status-text">
+                <div className="empty-watchlist-icon">
+                  {activeTab === 'watched' ? <Clapperboard size={40} /> : <Bookmark size={40} />}
+                </div>
+                <p className="empty-watchlist-text">
                   {activeTab === 'watched'
-                    ? "You haven't marked any anime as watched yet."
-                    : "No anime in your want-to-watch list."}
+                    ? "You haven't added any anime you've watched yet."
+                    : "Your want-to-watch list is empty."}
                 </p>
-                <button className="btn-primary" onClick={() => setAddModalOpen(true)}>
-                  <Plus size={16} /> {activeTab === 'watched' ? 'Add Anime You\'ve Watched' : 'Add Anime to Watch'}
+                <button className="btn-primary btn-lg" onClick={() => setAddModalOpen(true)}>
+                  <Plus size={18} /> {activeTab === 'watched' ? 'Add Anime You\'ve Watched' : 'Add Anime to Watch'}
                 </button>
               </div>
             ) : (
